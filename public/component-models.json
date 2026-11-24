@@ -1,0 +1,51 @@
+[
+  { "id": "engie-section", "fields": [
+    { "component": "text", "name": "title", "label": "Titre de section", "valueType": "string" },
+    { "component": "select", "name": "layout", "label": "Disposition", "valueType": "string", "options": [
+      { "name": "Colonnes adaptatives", "value": "grid" }, { "name": "Verticale", "value": "stack" }
+    ] },
+    { "component": "select", "name": "theme", "label": "Fond", "valueType": "string", "options": [
+      { "name": "Clair", "value": "light" }, { "name": "Bleu", "value": "blue" }, { "name": "Menthe", "value": "mint" }
+    ] }
+  ] },
+  { "id": "engie-hero", "fields": [
+    { "component": "text", "name": "eyebrow", "label": "Surtitre", "valueType": "string" },
+    { "component": "text", "name": "title", "label": "Titre principal", "valueType": "string", "required": true },
+    { "component": "textarea", "name": "text", "label": "Introduction", "valueType": "string" },
+    { "component": "text", "name": "linkLabel", "label": "Libellé du lien", "valueType": "string" },
+    { "component": "text", "name": "link", "label": "Chemin AEM de page ou URL HTTPS", "valueType": "string" },
+    { "component": "reference", "name": "image", "label": "Image DAM /content/dam/engie (facultative)", "valueType": "string" },
+    { "component": "text", "name": "imageAlt", "label": "Texte alternatif", "valueType": "string" },
+    { "component": "select", "name": "theme", "label": "Fond", "valueType": "string", "options": [
+      { "name": "Clair", "value": "light" }, { "name": "Bleu", "value": "blue" }, { "name": "Menthe", "value": "mint" }
+    ] }
+  ] },
+  { "id": "engie-text", "fields": [
+    { "component": "text", "name": "title", "label": "Titre", "valueType": "string" },
+    { "component": "textarea", "name": "text", "label": "Texte brut", "valueType": "string" }
+  ] },
+  { "id": "engie-offer", "fields": [
+    { "component": "aem-content-fragment", "name": "fragmentPath", "label": "Content Fragment — modèle ENGIE Offre", "valueType": "string", "validation": { "rootPath": "/content/dam/engie" } }
+  ] },
+  { "id": "engie-article", "fields": [
+    { "component": "aem-content-fragment", "name": "fragmentPath", "label": "Content Fragment — modèle ENGIE Conseil", "valueType": "string", "validation": { "rootPath": "/content/dam/engie" } }
+  ] },
+  { "id": "engie-faq", "fields": [
+    { "component": "text", "name": "title", "label": "Question", "valueType": "string" },
+    { "component": "textarea", "name": "text", "label": "Réponse", "valueType": "string" }
+  ] },
+  { "id": "engie-cta", "fields": [
+    { "component": "text", "name": "title", "label": "Titre", "valueType": "string" },
+    { "component": "textarea", "name": "text", "label": "Texte", "valueType": "string" },
+    { "component": "text", "name": "linkLabel", "label": "Libellé", "valueType": "string" },
+    { "component": "text", "name": "link", "label": "Chemin AEM de page ou URL HTTPS", "valueType": "string" },
+    { "component": "select", "name": "theme", "label": "Fond", "valueType": "string", "options": [
+      { "name": "Clair", "value": "light" }, { "name": "Bleu", "value": "blue" }, { "name": "Menthe", "value": "mint" }
+    ] }
+  ] },
+  { "id": "engie-image", "fields": [
+    { "component": "reference", "name": "image", "label": "Image DAM /content/dam/engie", "valueType": "string" },
+    { "component": "text", "name": "imageAlt", "label": "Texte alternatif", "valueType": "string", "required": true },
+    { "component": "text", "name": "text", "label": "Légende", "valueType": "string" }
+  ] }
+]

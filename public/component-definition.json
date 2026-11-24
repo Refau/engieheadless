@@ -1,0 +1,24 @@
+{
+  "groups": [{
+    "title": "ENGIE particuliers",
+    "id": "engie",
+    "components": [
+      { "title": "Section", "id": "engie-section", "model": "engie-section", "filter": "engie-section",
+        "plugins": { "aem": { "page": { "resourceType": "adobedemoemea145program/components/engie/section", "template": { "title": "Nouvelle section", "layout": "grid", "theme": "light" } } } } },
+      { "title": "Bannière", "id": "engie-hero", "model": "engie-hero",
+        "plugins": { "aem": { "page": { "resourceType": "adobedemoemea145program/components/engie/hero", "template": { "title": "Votre titre", "text": "Votre introduction", "eyebrow": "ENGIE particuliers", "theme": "blue" } } } } },
+      { "title": "Texte", "id": "engie-text", "model": "engie-text",
+        "plugins": { "aem": { "page": { "resourceType": "adobedemoemea145program/components/engie/text", "template": { "title": "Votre titre", "text": "Votre contenu" } } } } },
+      { "title": "Offre (Content Fragment)", "id": "engie-offer", "model": "engie-offer",
+        "plugins": { "aem": { "page": { "resourceType": "adobedemoemea145program/components/engie/offer", "template": { "fragmentPath": "" } } } } },
+      { "title": "Conseil (Content Fragment)", "id": "engie-article", "model": "engie-article",
+        "plugins": { "aem": { "page": { "resourceType": "adobedemoemea145program/components/engie/article", "template": { "fragmentPath": "" } } } } },
+      { "title": "Question fréquente", "id": "engie-faq", "model": "engie-faq",
+        "plugins": { "aem": { "page": { "resourceType": "adobedemoemea145program/components/engie/faq", "template": { "title": "Votre question", "text": "Votre réponse" } } } } },
+      { "title": "Appel à l'action", "id": "engie-cta", "model": "engie-cta",
+        "plugins": { "aem": { "page": { "resourceType": "adobedemoemea145program/components/engie/cta", "template": { "title": "À vous de jouer", "text": "Une invitation à découvrir", "linkLabel": "En savoir plus", "link": "/content/engie/fr/particuliers/contact", "theme": "mint" } } } } },
+      { "title": "Image", "id": "engie-image", "model": "engie-image",
+        "plugins": { "aem": { "page": { "resourceType": "adobedemoemea145program/components/engie/image", "template": { "image": "", "imageAlt": "", "text": "" } } } } }
+    ]
+  }]
+}

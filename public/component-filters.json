@@ -1,0 +1,4 @@
+[
+  { "id": "engie-root", "components": ["engie-section", "engie-hero", "engie-text", "engie-offer", "engie-article", "engie-faq", "engie-cta", "engie-image"] },
+  { "id": "engie-section", "components": ["engie-hero", "engie-text", "engie-offer", "engie-article", "engie-faq", "engie-cta", "engie-image"] }
+]
