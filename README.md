@@ -150,8 +150,9 @@ de certificats ou de clefs dans une image ou un commit.
 | `app/api/media/route.ts` | Relais des images Author authentifiees, sans cache |
 | `public/component-*.json` | Definitions, modeles et filtres UE |
 
-Le backend requis expose `{pagePath}.engie.json` : c'est un contrat specifique au
-projet, pas une API Adobe native. Il renvoie `path`, `title`, `rootPath` et les
+Le backend requis expose `{pagePath}/jcr:content.engie.json` : le servlet Sling
+cible le resourceType de `jcr:content`, pas le noeud `cq:Page`. C'est un contrat
+specifique au projet, pas une API Adobe native. Il renvoie `path`, `title`, `rootPath` et les
 composants ordonnes de `jcr:content/root`, avec les fragments resolus. Une reponse
 incompatible ou inaccessible produit une erreur, jamais une fausse page locale.
 

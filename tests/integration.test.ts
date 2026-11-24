@@ -29,7 +29,7 @@ for (const mode of ["publish", "author"]) {
         response.writeHead(200, { "Content-Type": "image/png" }).end(Buffer.from([137, 80, 78, 71]));
         return;
       }
-      const path = url.pathname.replace(/\.engie\.json$/, "");
+      const path = url.pathname.replace(/\/jcr:content\.engie\.json$/, "");
       if (![SITE_ROOT, `${SITE_ROOT}/nouvelle`].includes(path)) {
         response.writeHead(404).end();
         return;

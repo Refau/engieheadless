@@ -17,7 +17,7 @@ export function aemConfig() {
 export async function readPage(path: string, token?: string) {
   const config = aemConfig();
   if (config.author && !token) throw new Error("Ouvrir cette page depuis AEM Sites : login-token contributeur manquant.");
-  const endpoint = new URL(`${path}.engie.json`, config.origin);
+  const endpoint = new URL(`${path}/jcr:content.engie.json`, config.origin);
   if (config.author && token) endpoint.searchParams.set("login-token", token);
   const response = await fetch(endpoint, {
     cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15000),
