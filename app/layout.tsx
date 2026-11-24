@@ -9,9 +9,8 @@ export const metadata: Metadata = {
   description: "Électricité, gaz et solutions pour la maison : un site de démonstration éditoriale AEM."
 };
 
-export default function Layout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const author = process.env.AEM_MODE === "author";
-  const origin = author ? aemConfig().origin : undefined;
+export default async function Layout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const { author, origin } = await aemConfig();
   return <html lang="fr">
     <head>
       {author && <>

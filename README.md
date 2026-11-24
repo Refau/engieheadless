@@ -24,8 +24,9 @@ cp .env.example .env.local
 Configurer les variables **serveur** dans `.env.local` :
 
 ```dotenv
-AEM_MODE=author
-AEM_ORIGIN=https://author-p144258-e1701952.adobeaemcloud.com
+AEM_MODE=publish
+AEM_ORIGIN=https://publish-p144258-e1701952.adobeaemcloud.com
+AEM_AUTHOR_ORIGIN=https://author-p144258-e1701952.adobeaemcloud.com
 ```
 
 ```sh
@@ -34,20 +35,24 @@ npm run dev
 npm run dev:https
 ```
 
-Le front auteur refuse de lire le contenu sans le `login-token` du contributeur :
-ouvrir depuis AEM Sites avec le mapping UE configure. Une page ouverte directement
-sans jeton n'est pas une preuve de panne de la connexion. Le certificat HTTPS local
-doit etre accepte par le navigateur ; les certificats et clefs restent hors Git.
+Sans `login-token`, le site lit anonymement Publish. Depuis **AEM Sites →
+Modifier**, le mapping UE ajoute le jeton du contributeur : la meme URL sert alors
+les brouillons Author et active Universal Editor. La presence du parametre
+selectionne le mode auteur, mais seul AEM valide le jeton et autorise la lecture.
+Un jeton invalide ne donne jamais acces aux brouillons et ne declenche aucun
+repli vers Publish. Le certificat HTTPS local doit etre accepte par le navigateur ;
+les certificats et clefs restent hors Git.
 
-Les valeurs `AEM_MODE=author|publish` et `AEM_ORIGIN` sont obligatoires. L'origine
-doit etre HTTPS, sans chemin, identifiants, query string ou fragment ; seul
+Les valeurs `AEM_MODE=author|publish` et `AEM_ORIGIN` sont obligatoires.
+`AEM_AUTHOR_ORIGIN` est requis pour editer depuis un deploiement `publish`.
+Chaque origine doit etre HTTPS, sans chemin, identifiants, query string ou fragment ; seul
 `http://localhost:port` est permis pour un SDK local. Ne pas utiliser de variable
 `NEXT_PUBLIC_*` pour cette configuration. Ne jamais deduire l'origine AEM d'une
 requete entrante.
 
-## Quickstart Vercel : front auteur
+## Quickstart Vercel : site public editable depuis AEM Author
 
-1. Importer ce depot GitHub prive dans Vercel avec un compte disposant de l'acces
+1. Importer ce depot GitHub dans Vercel avec un compte disposant de l'acces
    au depot. Choisir **Framework Preset : Next.js**, **Root Directory : `.`**,
    **Install Command : `npm ci`**, **Build Command : `npm run build`**.
    Conserver l'Output Directory gere par le preset Next.js : ne pas selectionner
@@ -56,21 +61,26 @@ requete entrante.
    `engines.node` du package autorise aussi d'autres versions compatibles et
    peut influer sur la selection Vercel : verifier la version effective dans
    les logs de build. Le Dockerfile n'est pas utilise par le preset Next.js.
-3. Ajouter `AEM_MODE=author` et
-   `AEM_ORIGIN=https://author-p144258-e1701952.adobeaemcloud.com` aux
-   environnements Vercel effectivement utilises (Production et, si souhaite,
-   Preview/Development). Ne pas ajouter de compte technique ni de jeton persistant.
-   Redeployer apres tout changement de variables.
+3. Configurer les variables serveur des environnements Vercel effectivement
+   utilises (Production et, si souhaite, Preview/Development) :
+   `AEM_MODE=publish`,
+   `AEM_ORIGIN=https://publish-p144258-e1701952.adobeaemcloud.com` et
+   `AEM_AUTHOR_ORIGIN=https://author-p144258-e1701952.adobeaemcloud.com`.
+   Ne pas ajouter de compte technique ni de jeton persistant. Redeployer apres
+   tout changement de variables ; `.env.example` n'est pas charge par Vercel.
 4. Lancer le deploiement et recuperer son **URL HTTPS reelle**, de preference le
-   domaine stable du projet pour le front contributeur. Aucune URL Vercel n'est
-   predefinie dans ce depot ; importer le projet ne valide pas la connexion AEM.
+   domaine stable du projet. Le domaine actuel est
+   `https://engieheadless.vercel.app/`, pour les visiteurs comme pour les
+   contributeurs authentifies. Un second projet Vercel n'est pas necessaire.
 5. Dans Cloud Manager, configurer la variable de l'environnement **Author**
    `ENGIE_AUTHOR_HOST` avec le **hostname du front Vercel**, sans `https://`,
-   chemin ni slash final. Ce n'est **pas** le hostname de l'instance AEM.
+   chemin ni slash final : actuellement `engieheadless.vercel.app`.
+   Ce n'est **pas** le hostname de l'instance AEM.
    Faire appliquer/deployer le mapping UE depuis le depot AEM separe.
 6. Dans AEM Sites, ouvrir une page sous `/content/engie/fr/particuliers` avec
    **Modifier**. Verifier l'ouverture du bon domaine dans UE, la lecture de la
-   vraie page, les images DAM et l'enregistrement des modifications.
+   vraie page Author, les images DAM et l'enregistrement des modifications.
+   Publier ensuite dans AEM pour que les visiteurs voient les changements.
 
 Le rendu est serveur et dynamique, les lectures AEM utilisent `cache: "no-store"`.
 Ne pas configurer d'ISR, de cache CDN ou de regle de cache par-dessus les pages
@@ -95,7 +105,10 @@ Le mapping AEM ajoute `login-token=${token}` en conservant `${path}`.
 `${token}` est genere par AEM via `QueryTokenAuthenticationHandler` a l'ouverture,
 au nom du contributeur. Il est distinct de l'authentification Adobe IMS utilisee
 pour les **ecritures** UE. Le front ne transmet le jeton qu'a son origine Author
-fixe. Si le query-token manque ou n'est pas disponible, faire corriger la
+fixe (`AEM_AUTHOR_ORIGIN` en mode `publish`). Le proxy Next.js derive le mode
+d'edition de la requete et remplace tout header de mode fourni par le client ;
+aucune origine ni connexion n'est acceptee depuis une URL entrante.
+Si le query-token manque ou n'est pas disponible, faire corriger la
 configuration avec l'administrateur AEM/Adobe : aucun acces public ni compte
 technique de remplacement.
 
@@ -104,17 +117,18 @@ logs, traces, analytics et outils de monitoring de l'hebergeur. Ne pas copier ce
 URL dans des tickets. Aucun analytics n'est fourni ; ne pas ajouter de script
 tiers au front auteur sans revue des risques de fuite de session.
 
-### Front public, dans un second projet
+### Navigation publique et deploiement auteur separe facultatif
 
-Creer plus tard un **autre projet Vercel**, avec le meme depot et les memes
-reglages Next.js, mais `AEM_MODE=publish` et `AEM_ORIGIN` contenant la **vraie
-origine Publish**. Cette origine n'est pas encore renseignee ici : ne pas
-l'inventer ni reutiliser l'Author pour simuler un Publish.
+Sur le meme deploiement, les visiteurs sans jeton continuent de lire Publish,
+sans compte technique ni instrumentation UE. Une session d'edition Author ne
+change pas le mode des autres visiteurs. Les pages, fragments, modeles et assets
+doivent etre publies et leur lecture autorisee par AEM/Dispatcher pour apparaitre
+publiquement. Les fetchs serveur-a-serveur n'exigent pas de CORS navigateur global.
 
-Le front public lit anonymement le contenu publie, sans jeton technique ni
-instrumentation UE. Les pages, fragments, modeles et assets doivent etre publies
-et leur lecture autorisee par AEM/Dispatcher. Les fetchs serveur-a-serveur
-n'exigent pas de CORS navigateur global.
+Il reste possible d'isoler le front contributeur dans un second projet, mais
+ce n'est pas obligatoire. Dans ce cas, utiliser `AEM_MODE=author` et
+`AEM_ORIGIN=https://author-p144258-e1701952.adobeaemcloud.com` ; ce deploiement
+exige toujours le jeton contributeur et n'a pas besoin de `AEM_AUTHOR_ORIGIN`.
 
 ## Production locale et Docker
 
@@ -144,6 +158,7 @@ de certificats ou de clefs dans une image ou un commit.
 | --- | --- |
 | `app/[[...slug]]/page.tsx` | Routage et rendu serveur dynamique |
 | `lib/aem.ts` | Lecture authentifiee Author ou anonyme Publish |
+| `proxy.ts` | Contexte d'edition par requete, sans modifier la navigation publique |
 | `lib/content.ts` | Validation de la projection et des liens/chemins |
 | `components/Composition.tsx` | Rendu des huit types de blocs et instrumentation UE |
 | `components/EditorRefresh.tsx` | Relecture apres les evenements officiels UE |
@@ -186,10 +201,11 @@ npm run test:integration
 ```
 
 Les tests unitaires couvrent routes, liens, perimetre DAM, contrats UE et
-preparation standalone. Les **deux tests HTTP** demarrent le vrai serveur de
-production `.next/standalone/server.js`, un en mode Publish et un en mode Author,
-avec un **double de test du backend AEM**. Ils couvrent SSR, jeton, medias,
-cache, assets, pages nouvelles et 404. Ils ne valident ni une connexion AEM Cloud,
+preparation standalone. Les **trois tests HTTP** demarrent le vrai serveur de
+production `.next/standalone/server.js` en modes Publish, Author et hybride,
+avec des **doubles de test des deux origines AEM**. Ils couvrent SSR, jeton, medias,
+cache, assets, pages nouvelles, 404 et isolation des visiteurs/contributeurs
+sur le meme domaine. Ils ne valident ni une connexion AEM Cloud,
 ni IMS, ni un deploiement Vercel.
 
 La recette Cloud reste a effectuer apres deploiement des deux parties :

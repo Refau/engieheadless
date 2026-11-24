@@ -2,10 +2,11 @@ import { aemConfig } from "../../../lib/aem";
 import { damImage } from "../../../lib/content";
 
 export async function GET(request: Request) {
-  const config = aemConfig();
-  if (!config.author) return new Response("Not found", { status: 404 });
   const query = new URL(request.url).searchParams;
-  const token = query.get("login-token");
+  const tokens = query.getAll("login-token");
+  const token = tokens.length === 1 ? tokens[0] : undefined;
+  const config = await aemConfig();
+  if (!config.author) return new Response("Not found", { status: 404 });
   if (!token) return new Response("Session AEM requise", { status: 401 });
   const asset = damImage(query.get("path") ?? "", config.origin);
   if (!asset) return new Response("Chemin DAM invalide", { status: 400 });

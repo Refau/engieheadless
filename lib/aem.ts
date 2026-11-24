@@ -1,21 +1,26 @@
 import "server-only";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { pageSchema } from "./content";
 
-export function aemConfig() {
+export async function aemConfig() {
+  const requestHeaders = await headers();
   const mode = process.env.AEM_MODE;
   if (mode !== "author" && mode !== "publish") throw new Error("AEM_MODE doit valoir author ou publish.");
-  if (!process.env.AEM_ORIGIN) throw new Error("AEM_ORIGIN est requis : configurer l'origine AEM réelle.");
-  const url = new URL(process.env.AEM_ORIGIN);
+  const author = mode === "author" || requestHeaders.get("x-engie-authoring") === "1";
+  const variable = mode === "publish" && author ? "AEM_AUTHOR_ORIGIN" : "AEM_ORIGIN";
+  const origin = process.env[variable];
+  if (!origin) throw new Error(`${variable} est requis : configurer l'origine AEM réelle.`);
+  const url = new URL(origin);
   if (url.username || url.password || url.search || url.hash || url.pathname !== "/" ||
       (url.protocol !== "https:" && !(url.protocol === "http:" && url.hostname === "localhost"))) {
-    throw new Error("AEM_ORIGIN doit être une origine HTTPS sans chemin ni identifiants (HTTP localhost autorisé pour le SDK).");
+    throw new Error(`${variable} doit être une origine HTTPS sans chemin ni identifiants (HTTP localhost autorisé pour le SDK).`);
   }
-  return { origin: url.origin, author: mode === "author" };
+  return { origin: url.origin, author };
 }
 
 export async function readPage(path: string, token?: string) {
-  const config = aemConfig();
+  const config = await aemConfig();
   if (config.author && !token) throw new Error("Ouvrir cette page depuis AEM Sites : login-token contributeur manquant.");
   const endpoint = new URL(`${path}/jcr:content.engie.json`, config.origin);
   if (config.author && token) endpoint.searchParams.set("login-token", token);
