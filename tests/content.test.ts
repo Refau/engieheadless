@@ -21,6 +21,13 @@ test("les liens refusent les protocoles actifs et ne transmettent pas les sessio
   assert.equal(localLink("/content/engie/fr/particuliers-autre", "session-test"), "/content/engie/fr/particuliers-autre");
 });
 
+test("la vue UE publiee est conservee uniquement dans les liens du site", () => {
+  assert.equal(localLink(`${SITE_ROOT}/nouvelle?x=1#suite`, undefined, true), `${SITE_ROOT}/nouvelle?x=1&ue=1#suite`);
+  assert.equal(localLink("https://www.engie.fr/", undefined, true), "https://www.engie.fr/");
+  assert.equal(localLink("/content/engie/fr/particuliers-autre", undefined, true), "/content/engie/fr/particuliers-autre");
+  assert.equal(localLink(`${SITE_ROOT}/nouvelle`, "session-test", true), `${SITE_ROOT}/nouvelle?login-token=session-test`);
+});
+
 test("la lecture média reste dans le DAM ENGIE", () => {
   assert.equal(damImage("/content/dam/engie/maison.jpg", "https://aem.invalid"), "https://aem.invalid/content/dam/engie/maison.jpg");
   for (const path of ["/content/dam/other/private.jpg", "/content/dam/engie/../private.jpg", "/content/dam/engie/%2e%2e/private.jpg", "/content/dam/engie/photo.jpg?x=1"]) {

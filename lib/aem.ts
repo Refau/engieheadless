@@ -7,8 +7,15 @@ export async function aemConfig() {
   const requestHeaders = await headers();
   const mode = process.env.AEM_MODE;
   if (mode !== "author" && mode !== "publish") throw new Error("AEM_MODE doit valoir author ou publish.");
-  const author = mode === "author" || requestHeaders.get("x-engie-authoring") === "1";
-  const variable = mode === "publish" && author ? "AEM_AUTHOR_ORIGIN" : "AEM_ORIGIN";
+  const publishedPreview = mode === "publish" && requestHeaders.get("x-engie-authoring") === "preview";
+  const author = mode === "author" || requestHeaders.get("x-engie-authoring") === "1" || publishedPreview;
+  const variable = mode === "publish" && author && !publishedPreview ? "AEM_AUTHOR_ORIGIN" : "AEM_ORIGIN";
+  const origin = serverOrigin(variable);
+  const authorOrigin = author ? publishedPreview ? serverOrigin("AEM_AUTHOR_ORIGIN") : origin : undefined;
+  return { origin, author, authorOrigin, publishedPreview };
+}
+
+function serverOrigin(variable: string) {
   const origin = process.env[variable];
   if (!origin) throw new Error(`${variable} est requis : configurer l'origine AEM réelle.`);
   const url = new URL(origin);
@@ -16,14 +23,14 @@ export async function aemConfig() {
       (url.protocol !== "https:" && !(url.protocol === "http:" && url.hostname === "localhost"))) {
     throw new Error(`${variable} doit être une origine HTTPS sans chemin ni identifiants (HTTP localhost autorisé pour le SDK).`);
   }
-  return { origin: url.origin, author };
+  return url.origin;
 }
 
 export async function readPage(path: string, token?: string) {
   const config = await aemConfig();
-  if (config.author && !token) throw new Error("Ouvrir cette page depuis AEM Sites : login-token contributeur manquant.");
+  if (config.author && !config.publishedPreview && !token) throw new Error("Ouvrir cette page depuis AEM Sites : login-token contributeur manquant.");
   const endpoint = new URL(`${path}/jcr:content.engie.json`, config.origin);
-  if (config.author && token) endpoint.searchParams.set("login-token", token);
+  if (config.author && !config.publishedPreview && token) endpoint.searchParams.set("login-token", token);
   const response = await fetch(endpoint, {
     cache: "no-store", redirect: "error", signal: AbortSignal.timeout(15000),
     headers: { Accept: "application/json" }

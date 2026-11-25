@@ -35,7 +35,8 @@ npm run dev
 npm run dev:https
 ```
 
-Sans `login-token`, le site lit anonymement Publish. Depuis **AEM Sites →
+Sans `login-token`, le site lit anonymement Publish ; `ue=1` active explicitement
+l'instrumentation UE sur ce contenu publie (voir ci-dessous). Depuis **AEM Sites →
 Modifier**, le mapping UE ajoute le jeton du contributeur : la meme URL sert alors
 les brouillons Author et active Universal Editor. La presence du parametre
 selectionne le mode auteur, mais seul AEM valide le jeton et autorise la lecture.
@@ -99,7 +100,33 @@ connexion Vercel ou un challenge dans l'iframe peut bloquer UE, meme si le build
 est reussi. Configurer un acces compatible avec UE selon les regles de
 l'organisation ; ne pas supposer qu'une preview protegee fonctionnera ni ajouter
 de secret de contournement au code ou au mapping. Toute exemption approuvee de
-protection Vercel ne dispense jamais du `login-token` AEM.
+protection Vercel ne dispense jamais du `login-token` pour lire les brouillons AEM.
+
+### Afficher d'abord la page publiee dans Universal Editor
+
+Sur le meme deploiement `AEM_MODE=publish`, ouvrir explicitement
+`https://engieheadless.vercel.app/?ue=1` dans le champ **Site URL** de
+Universal Editor. Cette URL n'est utilisable qu'apres deploiement de ce code.
+Ne pas reprendre l'URL contenant un `login-token` invalide ou `${token}` :
+la presence de ce parametre garde toujours la priorite au mode Author authentifie.
+
+Ce mode lit la composition, les CF et les images sur Publish, sans jeton, mais
+ajoute les attributs, contrats et scripts UE avec une connexion a
+`AEM_AUTHOR_ORIGIN`. Il permet d'afficher et de selectionner le contenu deja
+publie sans attendre la resolution du query-token. Les liens internes conservent
+`ue=1` ; la navigation publique normale reste sans instrumentation.
+
+Un bandeau indique explicitement que les brouillons ne sont pas charges.
+Les ecritures UE necessitent toujours IMS et les droits Author. Ce mode ne
+valide pas leur fonctionnement, ne remplace pas la recette des brouillons ou
+de la composition et ne retombe jamais silencieusement sur Publish apres un
+echec Author. Un rechargement montre uniquement les donnees publiees ; le
+rechargement automatique specifique au mode brouillons est donc desactive.
+
+Ce parcours de lecture Publish / ecriture Author est illustre par le
+[tutoriel Adobe React et UE](https://experienceleague.adobe.com/en/docs/experience-manager-learn/getting-started-with-aem-headless/open-api/basic/5-universal-editor).
+
+### Authentification des brouillons
 
 Le mapping AEM ajoute `login-token=${token}` en conservant `${path}`.
 `${token}` est genere par AEM via `QueryTokenAuthenticationHandler` a l'ouverture,
@@ -207,6 +234,8 @@ avec des **doubles de test des deux origines AEM**. Ils couvrent SSR, jeton, med
 cache, assets, pages nouvelles, 404 et isolation des visiteurs/contributeurs
 sur le meme domaine. Ils ne valident ni une connexion AEM Cloud,
 ni IMS, ni un deploiement Vercel.
+Ils couvrent aussi la vue explicite `ue=1` : contenu et images Publish,
+instrumentation Author, navigation et priorite des erreurs d'authentification.
 
 La recette Cloud reste a effectuer apres deploiement des deux parties :
 creation d'une page blanche, ajout des huit types, choix/modification d'un CF

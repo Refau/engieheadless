@@ -47,12 +47,13 @@ export function safeLink(value: string): string | undefined {
   return undefined;
 }
 
-export function localLink(value: string, token?: string): string | undefined {
+export function localLink(value: string, token?: string, publishedPreview = false): string | undefined {
   const link = safeLink(value);
   if (!link) return undefined;
   if (!link.startsWith(SITE_ROOT) || !new RegExp(`^${SITE_ROOT}(?:/|[?#]|$)`).test(link)) return link;
   const url = new URL(link, "https://routing.invalid");
   if (token) url.searchParams.set("login-token", token);
+  else if (publishedPreview) url.searchParams.set("ue", "1");
   return `${url.pathname}${url.search}${url.hash}`;
 }
 

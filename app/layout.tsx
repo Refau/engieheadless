@@ -10,12 +10,12 @@ export const metadata: Metadata = {
 };
 
 export default async function Layout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const { author, origin } = await aemConfig();
+  const { author, authorOrigin, publishedPreview } = await aemConfig();
   return <html lang="fr">
     <head>
       {author && <>
         <meta name="robots" content="noindex,nofollow" />
-        <meta name="urn:adobe:aue:system:aemconnection" content={`aem:${origin}`} />
+        <meta name="urn:adobe:aue:system:aemconnection" content={`aem:${authorOrigin}`} />
         <script type="application/vnd.adobe.aue.component+json" src="/component-definition.json" />
         <script type="application/vnd.adobe.aue.model+json" src="/component-models.json" />
         <script type="application/vnd.adobe.aue.filter+json" src="/component-filters.json" />
@@ -24,7 +24,7 @@ export default async function Layout({ children }: Readonly<{ children: React.Re
     <body>
       {children}
       {author && <>
-        <EditorRefresh />
+        {!publishedPreview && <EditorRefresh />}
         <Script src="https://universal-editor-service.adobe.io/cors.js" strategy="afterInteractive" />
       </>}
     </body>

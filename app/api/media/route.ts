@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   const tokens = query.getAll("login-token");
   const token = tokens.length === 1 ? tokens[0] : undefined;
   const config = await aemConfig();
-  if (!config.author) return new Response("Not found", { status: 404 });
+  if (!config.author || config.publishedPreview) return new Response("Not found", { status: 404 });
   if (!token) return new Response("Session AEM requise", { status: 401 });
   const asset = damImage(query.get("path") ?? "", config.origin);
   if (!asset) return new Response("Chemin DAM invalide", { status: 400 });

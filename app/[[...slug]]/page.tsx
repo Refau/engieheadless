@@ -14,9 +14,12 @@ export default async function Page({ params, searchParams }: {
   const token = typeof value === "string" ? value : undefined;
   const { page, config } = await readPage(path, token);
   const context = { ...config, token: config.author ? token : undefined };
-  const href = (path: string) => localLink(path, context.token);
+  const href = (path: string) => localLink(path, context.token, config.publishedPreview);
   return <>
     <a className="skip" href="#contenu">Aller au contenu</a>
+    {config.publishedPreview && <p className="editor-notice" role="status">
+      Universal Editor : affichage du contenu publié. Les brouillons ne sont pas chargés.
+    </p>}
     <div className="topline"><span>Particuliers</span><span>Professionnels</span><span>Une énergie qui nous rassemble</span></div>
     <header className="site-header">
       <a className="brand" href={href(SITE_ROOT)} aria-label="ENGIE — accueil">ENGIE<span>particuliers</span></a>

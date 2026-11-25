@@ -12,7 +12,7 @@ const component = {
   path: `${rootPath}/hero`, type: "hero", title: "Test HTTP depuis AEM",
   text: "Contenu du serveur de test", eyebrow: "TEST",
   linkLabel: "Nouvelle page", link: `${SITE_ROOT}/nouvelle`,
-  image: "", imageAlt: "", theme: "blue", layout: ""
+  image: "/content/dam/engie/photo.png", imageAlt: "Photo test", theme: "blue", layout: ""
 };
 const fragmentPath = "/content/dam/engie/offres/test";
 const offer = {
@@ -134,8 +134,10 @@ for (const mode of ["publish", "author", "hybrid"]) {
       assert.deepEqual(requests.slice(previousReads), [{ author: true, token: "invalid" }]);
       if (mode === "author") {
         const readsBeforeMissingToken = requests.length;
-        const missingToken = await fetch(`${origin}/`);
-        assert.ok(!(await missingToken.text()).includes(expectedTitle));
+        for (const path of ["/", "/?ue=1"]) {
+          const missingToken = await fetch(`${origin}${path}`);
+          assert.ok(!(await missingToken.text()).includes(expectedTitle));
+        }
         assert.equal(requests.length, readsBeforeMissingToken);
       }
     } else {
@@ -147,6 +149,9 @@ for (const mode of ["publish", "author", "hybrid"]) {
       const missingAuthorConfig = await fetch(`${origin}/?login-token=test-contributor`);
       assert.ok(!(await missingAuthorConfig.text()).includes(expectedTitle));
       assert.equal(requests.length, previousReads);
+      const missingPreviewConfig = await fetch(`${origin}/?ue=1`);
+      assert.ok(!(await missingPreviewConfig.text()).includes(expectedTitle));
+      assert.equal(requests.length, previousReads);
     }
     const blank = await fetch(`${origin}${SITE_ROOT}/nouvelle${query}`);
     const blankHtml = await blank.text();
@@ -156,7 +161,7 @@ for (const mode of ["publish", "author", "hybrid"]) {
     assert.equal((await fetch(`${origin}/content/autre-site${query}`)).status, 404);
     if (mode === "hybrid") {
       const previousReads = requests.length;
-      for (const invalidQuery of ["?login-token=", "?login-token=test-contributor&login-token=invalid"]) {
+      for (const invalidQuery of ["?login-token=", "?login-token=test-contributor&login-token=invalid", "?ue=1&login-token="]) {
         const invalid = await fetch(`${origin}/${invalidQuery}`);
         const invalidHtml = await invalid.text();
         assert.ok(!invalidHtml.includes(`${component.title} Author`));
@@ -165,11 +170,12 @@ for (const mode of ["publish", "author", "hybrid"]) {
       assert.equal((await fetch(`${origin}/api/media?path=/content/dam/engie/photo.png&login-token=`)).status, 401);
       assert.equal((await fetch(`${origin}/api/media?path=/content/dam/engie/photo.png&login-token=test-contributor&login-token=invalid`)).status, 401);
       assert.equal(requests.length, previousReads);
-      const [visitor, editor] = await Promise.all([
-        fetch(`${origin}/`, { headers: { "x-engie-authoring": "1" } }),
-        fetch(`${origin}/${query}`, { headers: { "x-engie-authoring": "0" } })
+      const [visitor, editor, preview] = await Promise.all([
+        fetch(`${origin}/`, { headers: { "x-engie-authoring": "preview" } }),
+        fetch(`${origin}/${query}`, { headers: { "x-engie-authoring": "0" } }),
+        fetch(`${origin}/?ue=1`)
       ]);
-      const [visitorHtml, editorHtml] = await Promise.all([visitor.text(), editor.text()]);
+      const [visitorHtml, editorHtml, previewHtml] = await Promise.all([visitor.text(), editor.text(), preview.text()]);
       assert.equal(visitor.status, 200);
       assert.ok(visitorHtml.includes(`${component.title} Publish`));
       assert.ok(!visitorHtml.includes("data-aue-resource="));
@@ -179,6 +185,28 @@ for (const mode of ["publish", "author", "hybrid"]) {
       assert.ok(editorHtml.includes(`${component.title} Author`));
       assert.ok(editorHtml.includes(`aem:${authorOrigin}`));
       assert.ok(editorHtml.includes("data-aue-resource="));
+      assert.equal(preview.status, 200);
+      assert.ok(previewHtml.includes(`${component.title} Publish`));
+      assert.ok(!previewHtml.includes(`${component.title} Author`));
+      assert.ok(previewHtml.includes("Les brouillons ne sont pas"));
+      assert.ok(previewHtml.includes(`aem:${authorOrigin}`));
+      assert.ok(previewHtml.includes(`urn:aemconnection:${rootPath}`));
+      assert.ok(previewHtml.includes(`urn:aemconnection:${fragmentPath}/jcr:content/data/master`));
+      assert.ok(previewHtml.includes("component-definition.json"));
+      assert.ok(previewHtml.includes("universal-editor-service.adobe.io/cors.js"));
+      assert.ok(previewHtml.includes(`${publishOrigin}/content/dam/engie/photo.png`));
+      assert.ok(!previewHtml.includes("/api/media?"));
+      assert.ok(!previewHtml.includes("login-token="));
+      assert.ok(previewHtml.includes(`${SITE_ROOT}/nouvelle?ue=1`));
+      assert.ok(preview.headers.get("cache-control")?.includes("no-store"));
+      const readsBeforePreview = requests.length;
+      const previewNavigation = await fetch(`${origin}${SITE_ROOT}/nouvelle?ue=1`);
+      assert.equal(previewNavigation.status, 200);
+      assert.deepEqual(requests.slice(readsBeforePreview), [{ author: false, token: null }]);
+      const readsBeforeInvalid = requests.length;
+      const invalidPreview = await fetch(`${origin}/?ue=1&login-token=invalid`);
+      assert.ok(!(await invalidPreview.text()).includes(`${component.title} Publish`));
+      assert.deepEqual(requests.slice(readsBeforeInvalid), [{ author: true, token: "invalid" }]);
     }
     assert.ok(requests.filter(request => !request.author).every(request => request.token === null));
   });
