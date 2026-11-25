@@ -22,9 +22,6 @@ export default async function Page({ params, searchParams }: {
     {config.publishedPreview && <p className="editor-notice" role="status">
       Universal Editor : affichage du contenu publié. Les brouillons ne sont pas chargés.
     </p>}
-    {config.draft && <p className="editor-notice" role="status">
-      Brouillon AEM non publié — lien de prévisualisation temporaire, à ne pas partager.
-    </p>}
     <div className="topline"><span>Particuliers</span><span>Professionnels</span><span>Une énergie qui nous rassemble</span></div>
     <header className="site-header">
       <a className="brand" href={href(SITE_ROOT)} aria-label="ENGIE — accueil">ENGIE<span>particuliers</span></a>

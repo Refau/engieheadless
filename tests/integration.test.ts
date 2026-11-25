@@ -186,7 +186,7 @@ for (const mode of ["publish", "author", "hybrid"]) {
       const draftHtml = await draft.text();
       assert.equal(draft.status, 200, output);
       assert.ok(draftHtml.includes(`${component.title} Author`));
-      assert.ok(draftHtml.includes("Brouillon AEM non publié"));
+      assert.ok(!draftHtml.includes("editor-notice"));
       assert.ok(draftHtml.includes(`aem:${authorOrigin}`));
       assert.ok(draftHtml.includes(`urn:aemconnection:${rootPath}`));
       assert.ok(draftHtml.includes("universal-editor-service.adobe.io/cors.js"));
