@@ -67,7 +67,9 @@ requete entrante.
    `AEM_MODE=publish`,
    `AEM_ORIGIN=https://publish-p144258-e1701952.adobeaemcloud.com` et
    `AEM_AUTHOR_ORIGIN=https://author-p144258-e1701952.adobeaemcloud.com`.
-   Ne pas ajouter de compte technique ni de jeton persistant. Redeployer apres
+   Pour les brouillons, ajouter aussi `AEM_PREVIEW_SECRET` et
+   `AEM_S2S_CREDENTIALS` en variables **Sensitive** (voir
+   [Brouillons dans Universal Editor](#brouillons-dans-universal-editor)). Redeployer apres
    tout changement de variables ; `.env.example` n'est pas charge par Vercel.
 4. Lancer le deploiement et recuperer son **URL HTTPS reelle**, de preference le
    domaine stable du projet. Le domaine actuel est
@@ -99,8 +101,8 @@ Verifier **Deployment Protection** sur le domaine reel choisi : une page de
 connexion Vercel ou un challenge dans l'iframe peut bloquer UE, meme si le build
 est reussi. Configurer un acces compatible avec UE selon les regles de
 l'organisation ; ne pas supposer qu'une preview protegee fonctionnera ni ajouter
-de secret de contournement au code ou au mapping. Toute exemption approuvee de
-protection Vercel ne dispense jamais du `login-token` pour lire les brouillons AEM.
+de secret de contournement Vercel au code ou au mapping. Toute exemption approuvee de
+protection Vercel ne dispense jamais du lien de brouillon signe pour lire Author.
 
 ### Afficher d'abord la page publiee dans Universal Editor
 
@@ -126,20 +128,69 @@ rechargement automatique specifique au mode brouillons est donc desactive.
 Ce parcours de lecture Publish / ecriture Author est illustre par le
 [tutoriel Adobe React et UE](https://experienceleague.adobe.com/en/docs/experience-manager-learn/getting-started-with-aem-headless/open-api/basic/5-universal-editor).
 
-### Authentification des brouillons
+### Brouillons dans Universal Editor
 
-Le mapping AEM ajoute `login-token=${token}` en conservant `${path}`.
+Sur AEM as a Cloud Service, le mapping `login-token=${token}` arrive ici avec
+`${token}` litteral : aucun jeton contributeur n'est disponible. Les brouillons
+sont donc lus **cote serveur** par un compte technique OAuth Server-to-Server
+limite a la lecture ENGIE, uniquement pour les requetes ouvertes par un lien
+de brouillon signe :
+
+1. AEM ouvre `https://<front>${path}?engie-preview=<secret>` (mapping UE avec
+   `$[secret:ENGIE_PREVIEW_SECRET]`, jamais une valeur litterale dans Git).
+2. Le proxy compare le secret a `AEM_PREVIEW_SECRET` en temps constant, puis
+   redirige (303, `no-store`) vers la meme page avec `engie-draft=<jeton>` :
+   un jeton HMAC valable 8 h, sans le secret. `login-token` et `ue` sont retires.
+3. Les pages et `/api/media` verifient ce jeton, obtiennent un jeton IMS
+   (`client_credentials`, mis en cache par processus) et lisent
+   `AEM_AUTHOR_ORIGIN` avec `Authorization: Bearer`. Le jeton IMS et les
+   identifiants ne sont jamais envoyes au navigateur. Les liens internes
+   conservent `engie-draft`. Un jeton invalide/expire repond 403 sans lecture AEM.
+
+Variables serveur (Vercel **Sensitive**, jamais `NEXT_PUBLIC_*`) :
+
+- `AEM_PREVIEW_SECRET` : 32 a 256 caracteres `A-Z a-z 0-9 _ -`, par exemple
+  `openssl rand -hex 32`. Meme valeur que le secret Cloud Manager
+  `ENGIE_PREVIEW_SECRET` de l'environnement Author.
+- `AEM_S2S_CREDENTIALS` : contenu JSON complet du fichier
+  `aem-s2s-credentials.json` telecharge depuis **AEM Developer Console →
+  Integrations → Create new technical account → OAuth Server-to-Server** de
+  l'environnement Author (`imsEndpoint`, `scopes`, `technicalAccount.clientId`,
+  `technicalAccount.clientSecret`). Le secret client n'est affiche qu'une fois.
+
+Droits AEM : ajouter le compte technique (son `email`) a un **profil produit
+dedie** dans Admin Console, puis donner au groupe AEM correspondant **uniquement
+la lecture** de `/content/engie/fr/particuliers`, `/content/dam/engie` et
+`/conf/engie`. Aucun droit d'ecriture, de replication ou d'administration.
+Voir [Generating Access Tokens for Server-Side APIs](https://experienceleague.adobe.com/en/docs/experience-manager-cloud-service/content/implementing/developing/generating-access-tokens-for-server-side-apis).
+
+Limites a connaitre :
+
+- Le secret d'amorcage est un **bearer partage**, pas une authentification
+  individuelle : toute personne qui l'obtient (URL de l'editeur, historique,
+  logs de requetes Vercel) lit les brouillons ENGIE pendant sa validite. Le
+  front ne verifie pas que le visiteur est contributeur AEM. Les ecritures UE
+  restent, elles, authentifiees par l'IMS et les droits Author de chaque contributeur.
+- Rotation/revocation : changer `ENGIE_PREVIEW_SECRET` (Cloud Manager) et
+  `AEM_PREVIEW_SECRET` (Vercel, puis redeployer) invalide le secret et tous les
+  jetons `engie-draft` emis. Revoquer le secret client dans AEM Developer Console
+  coupe les lectures techniques.
+- Pour reduire l'exposition, activer une protection d'acces compatible avec UE
+  sur le front et ne pas copier les URL d'edition dans des tickets.
+
+### Jeton contributeur AEM (`login-token`)
+
+Si AEM substitue un jeton reel, le mapping peut ajouter `login-token=${token}` en conservant `${path}`.
 `${token}` est genere par AEM via `QueryTokenAuthenticationHandler` a l'ouverture,
 au nom du contributeur. Il est distinct de l'authentification Adobe IMS utilisee
 pour les **ecritures** UE. Le front ne transmet le jeton qu'a son origine Author
 fixe (`AEM_AUTHOR_ORIGIN` en mode `publish`). Le proxy Next.js derive le mode
 d'edition de la requete et remplace tout header de mode fourni par le client ;
 aucune origine ni connexion n'est acceptee depuis une URL entrante.
-Si le query-token manque ou n'est pas disponible, faire corriger la
-configuration avec l'administrateur AEM/Adobe : aucun acces public ni compte
-technique de remplacement.
+Un `login-token` absent ou invalide ne declenche aucun repli : utiliser le lien
+de brouillon signe ci-dessus, jamais un acces public.
 
-Les URL auteur contiennent un jeton de session. Exclure les query strings des
+Les URL auteur contiennent un jeton de session ou de brouillon. Exclure les query strings des
 logs, traces, analytics et outils de monitoring de l'hebergeur. Ne pas copier ces
 URL dans des tickets. Aucun analytics n'est fourni ; ne pas ajouter de script
 tiers au front auteur sans revue des risques de fuite de session.
@@ -186,6 +237,8 @@ de certificats ou de clefs dans une image ou un commit.
 | `app/[[...slug]]/page.tsx` | Routage et rendu serveur dynamique |
 | `lib/aem.ts` | Lecture authentifiee Author ou anonyme Publish |
 | `proxy.ts` | Contexte d'edition par requete, sans modifier la navigation publique |
+| `lib/draft.ts` | Secret d'amorcage et jetons de brouillon signes (8 h) |
+| `lib/ims.ts` | Jeton OAuth Server-to-Server AEM, serveur uniquement |
 | `lib/content.ts` | Validation de la projection et des liens/chemins |
 | `components/Composition.tsx` | Rendu des huit types de blocs et instrumentation UE |
 | `components/EditorRefresh.tsx` | Relecture apres les evenements officiels UE |

@@ -1,7 +1,7 @@
-import type { Component } from "../lib/content";
+import type { Component, LinkCarry } from "../lib/content";
 import { damImage, localLink } from "../lib/content";
 
-type Context = { author: boolean; origin: string; token?: string; publishedPreview?: boolean };
+type Context = { author: boolean; origin: string; carry?: LinkCarry; publishedPreview?: boolean };
 const labels = {
   section: "Section", hero: "Bannière", text: "Texte", offer: "Offre",
   article: "Conseil", faq: "Question fréquente", cta: "Appel à l'action", image: "Image"
@@ -13,7 +13,7 @@ function editable(author: boolean, prop: string, resource?: string) {
   } : {};
 }
 function Action({ label, link, context }: { label: string; link: string; context: Context }) {
-  const href = localLink(link, context.author ? context.token : undefined, context.publishedPreview);
+  const href = localLink(link, context.carry);
   if (!label && !link) return null;
   if (!label || !href) return <p role="alert" className="content-error">
     {context.author ? "Lien incomplet ou invalide : renseignez un libellé et un chemin de page ou une URL HTTPS." : "Lien temporairement indisponible."}
@@ -36,7 +36,7 @@ function Block({ item, context }: { item: Component; context: Context }) {
   const theme = ["light", "blue", "mint"].includes(item.theme) ? item.theme : "light";
   const asset = damImage(item.image, origin);
   const image = asset && author && !context.publishedPreview
-    ? `/api/media?${new URLSearchParams({ path: item.image, "login-token": context.token ?? "" })}`
+    ? `/api/media?${new URLSearchParams({ path: item.image, ...(context.carry ? { [context.carry.name]: context.carry.value } : {}) })}`
     : asset;
   switch (item.type) {
     case "section":

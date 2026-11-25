@@ -11,7 +11,7 @@
     "postbuild": "node scripts/prepare-standalone.mjs",
     "start": "node --env-file-if-exists=.env.local .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/content.test.ts tests/standalone.test.mjs",
+    "test": "node --test tests/content.test.ts tests/draft.test.ts tests/standalone.test.mjs",
     "test:integration": "node --test tests/integration.test.ts"
   },
   "dependencies": {

@@ -6,6 +6,8 @@ import { spawn } from "node:child_process";
 import test from "node:test";
 import { SITE_ROOT } from "../lib/content.ts";
 
+const previewSecret = "test-preview-secret-0123456789abcdef";
+
 // Explicit test double for the HTTP contract; never imported by the application.
 const rootPath = `${SITE_ROOT}/jcr:content/root`;
 const component = {
@@ -27,12 +29,13 @@ for (const mode of ["publish", "author", "hybrid"]) {
   test(`SSR ${mode} : transport AEM, routes, cache et instrumentation`, { timeout: 45000 }, async t => {
     const authoring = mode !== "publish";
     let lastToken: string | null = null;
-    const requests: { author: boolean; token: string | null }[] = [];
+    const requests: { author: boolean; token: string | null; bearer?: string }[] = [];
     const backends = [false, true].map(author => createServer((request, response) => {
       const url = new URL(request.url!, "http://localhost");
       lastToken = url.searchParams.get("login-token");
-      requests.push({ author, token: lastToken });
-      if (author && lastToken !== "test-contributor") {
+      const bearer = request.headers.authorization;
+      requests.push({ author, token: lastToken, ...(bearer ? { bearer } : {}) });
+      if (author && lastToken !== "test-contributor" && bearer !== "Bearer test-service") {
         response.writeHead(401).end();
         return;
       }
@@ -64,13 +67,18 @@ for (const mode of ["publish", "author", "hybrid"]) {
     await once(reservation, "listening");
     const port = (reservation.address() as AddressInfo).port;
     await new Promise<void>(resolve => reservation.close(() => resolve()));
-    const child = spawn(process.execPath, [".next/standalone/server.js"], {
+    const child = spawn(process.execPath, ["--import", "./tests/ims-double.mjs", ".next/standalone/server.js"], {
       cwd: new URL("..", import.meta.url),
       env: {
         ...process.env, NEXT_TELEMETRY_DISABLED: "1",
         AEM_MODE: mode === "hybrid" ? "publish" : mode,
         AEM_ORIGIN: mode === "author" ? authorOrigin : publishOrigin,
         AEM_AUTHOR_ORIGIN: mode === "hybrid" ? authorOrigin : "",
+        AEM_PREVIEW_SECRET: mode === "publish" ? "" : previewSecret,
+        AEM_S2S_CREDENTIALS: JSON.stringify({
+          imsEndpoint: "ims-na1.adobelogin.com", scopes: ["AdobeID", "openid", "read_pc.dma_aem_cloud"],
+          technicalAccount: { clientId: "test-client", clientSecret: "test-client-secret" }
+        }),
         HOSTNAME: "127.0.0.1", PORT: String(port)
       },
       stdio: ["ignore", "pipe", "pipe"]
@@ -153,6 +161,53 @@ for (const mode of ["publish", "author", "hybrid"]) {
       assert.ok(!(await missingPreviewConfig.text()).includes(expectedTitle));
       assert.equal(requests.length, previousReads);
     }
+    if (mode === "publish") {
+      const unconfigured = await fetch(`${origin}/?engie-preview=${previewSecret}`, { redirect: "manual" });
+      assert.equal(unconfigured.status, 503);
+    } else {
+      const readsBeforeDraft = requests.length;
+      for (const invalid of ["?engie-preview=wrong", `?engie-preview=${previewSecret}&engie-preview=${previewSecret}`,
+        "?engie-draft=v1.9999999999.forged", "?engie-draft=forged&login-token=test-contributor"]) {
+        const denied = await fetch(`${origin}/${invalid}`, { redirect: "manual" });
+        assert.equal(denied.status, 403, invalid);
+        assert.ok(denied.headers.get("cache-control")?.includes("no-store"));
+      }
+      assert.equal(requests.length, readsBeforeDraft);
+      const opening = await fetch(`${origin}${SITE_ROOT}?engie-preview=${previewSecret}&login-token=%24%7Btoken%7D`, { redirect: "manual" });
+      assert.equal(opening.status, 303);
+      assert.ok(opening.headers.get("cache-control")?.includes("no-store"));
+      assert.equal(opening.headers.get("referrer-policy"), "no-referrer");
+      const location = new URL(opening.headers.get("location")!, origin);
+      assert.equal(location.pathname, SITE_ROOT);
+      assert.deepEqual([...location.searchParams.keys()], ["engie-draft"]);
+      assert.ok(!location.href.includes(previewSecret));
+      assert.equal(requests.length, readsBeforeDraft);
+      const draft = await fetch(location);
+      const draftHtml = await draft.text();
+      assert.equal(draft.status, 200, output);
+      assert.ok(draftHtml.includes(`${component.title} Author`));
+      assert.ok(draftHtml.includes("Brouillon AEM non publié"));
+      assert.ok(draftHtml.includes(`aem:${authorOrigin}`));
+      assert.ok(draftHtml.includes(`urn:aemconnection:${rootPath}`));
+      assert.ok(draftHtml.includes("universal-editor-service.adobe.io/cors.js"));
+      assert.ok(!draftHtml.includes(previewSecret));
+      assert.ok(!draftHtml.includes("test-service"));
+      assert.ok(!draftHtml.includes("test-client-secret"));
+      assert.ok(!draftHtml.includes("login-token"));
+      const draftToken = location.searchParams.get("engie-draft")!;
+      assert.ok(draftHtml.includes(`${SITE_ROOT}/nouvelle?engie-draft=${draftToken}`));
+      assert.ok(draftHtml.includes(`/api/media?path=%2Fcontent%2Fdam%2Fengie%2Fphoto.png&amp;engie-draft=${draftToken}`));
+      assert.ok(draft.headers.get("cache-control")?.includes("no-store"));
+      const draftMedia = await fetch(`${origin}/api/media?path=/content/dam/engie/photo.png&engie-draft=${draftToken}`);
+      assert.equal(draftMedia.status, 200);
+      assert.equal(draftMedia.headers.get("content-type"), "image/png");
+      const draftBlank = await fetch(`${origin}${SITE_ROOT}/nouvelle?engie-draft=${draftToken}`);
+      assert.ok((await draftBlank.text()).includes("Votre page blanche"));
+      assert.deepEqual(requests.slice(readsBeforeDraft), [SITE_ROOT, "photo", `${SITE_ROOT}/nouvelle`]
+        .map(() => ({ author: true, token: null, bearer: "Bearer test-service" })));
+      assert.equal(output.match(/IMS_DOUBLE_REQUEST valid=true/g)?.length, 1, output);
+      assert.ok(!output.includes("valid=false"));
+    }
     const blank = await fetch(`${origin}${SITE_ROOT}/nouvelle${query}`);
     const blankHtml = await blank.text();
     assert.equal(blank.status, 200);
@@ -208,6 +263,7 @@ for (const mode of ["publish", "author", "hybrid"]) {
       assert.ok(!(await invalidPreview.text()).includes(`${component.title} Publish`));
       assert.deepEqual(requests.slice(readsBeforeInvalid), [{ author: true, token: "invalid" }]);
     }
-    assert.ok(requests.filter(request => !request.author).every(request => request.token === null));
+    assert.ok(requests.filter(request => !request.author).every(request => request.token === null && !request.bearer));
+    assert.ok(requests.every(request => !(request.token && request.bearer)));
   });
 }

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { readPage } from "../../lib/aem";
+import { linkCarry, readPage } from "../../lib/aem";
+import { DRAFT_PARAM } from "../../lib/draft";
 import { localLink, pagePath, SITE_ROOT } from "../../lib/content";
 import Composition from "../../components/Composition";
 
@@ -10,15 +11,19 @@ export default async function Page({ params, searchParams }: {
 }) {
   const path = pagePath((await params).slug);
   if (!path) notFound();
-  const value = (await searchParams)["login-token"];
-  const token = typeof value === "string" ? value : undefined;
-  const { page, config } = await readPage(path, token);
-  const context = { ...config, token: config.author ? token : undefined };
-  const href = (path: string) => localLink(path, context.token, config.publishedPreview);
+  const query = await searchParams;
+  const single = (value: string | string[] | undefined) => typeof value === "string" ? value : undefined;
+  const access = { token: single(query["login-token"]), draft: single(query[DRAFT_PARAM]) };
+  const { page, config } = await readPage(path, access);
+  const context = { ...config, carry: linkCarry(config, access) };
+  const href = (path: string) => localLink(path, context.carry);
   return <>
     <a className="skip" href="#contenu">Aller au contenu</a>
     {config.publishedPreview && <p className="editor-notice" role="status">
       Universal Editor : affichage du contenu publié. Les brouillons ne sont pas chargés.
+    </p>}
+    {config.draft && <p className="editor-notice" role="status">
+      Brouillon AEM non publié — lien de prévisualisation temporaire, à ne pas partager.
     </p>}
     <div className="topline"><span>Particuliers</span><span>Professionnels</span><span>Une énergie qui nous rassemble</span></div>
     <header className="site-header">

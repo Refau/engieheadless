@@ -16,16 +16,17 @@ test("les liens refusent les protocoles actifs et ne transmettent pas les sessio
   for (const unsafe of ["javascript:alert(1)", "//other.invalid", "/\\other.invalid", "data:text/html,test", "https:\n//other.invalid"]) {
     assert.equal(safeLink(unsafe), undefined);
   }
-  assert.equal(localLink(`${SITE_ROOT}/nouvelle#suite`, "session-test"), `${SITE_ROOT}/nouvelle?login-token=session-test#suite`);
-  assert.equal(localLink("https://www.engie.fr/", "session-test"), "https://www.engie.fr/");
-  assert.equal(localLink("/content/engie/fr/particuliers-autre", "session-test"), "/content/engie/fr/particuliers-autre");
+  const session = { name: "login-token", value: "session-test" };
+  assert.equal(localLink(`${SITE_ROOT}/nouvelle#suite`, session), `${SITE_ROOT}/nouvelle?login-token=session-test#suite`);
+  assert.equal(localLink("https://www.engie.fr/", session), "https://www.engie.fr/");
+  assert.equal(localLink("/content/engie/fr/particuliers-autre", session), "/content/engie/fr/particuliers-autre");
 });
 
 test("la vue UE publiee est conservee uniquement dans les liens du site", () => {
-  assert.equal(localLink(`${SITE_ROOT}/nouvelle?x=1#suite`, undefined, true), `${SITE_ROOT}/nouvelle?x=1&ue=1#suite`);
-  assert.equal(localLink("https://www.engie.fr/", undefined, true), "https://www.engie.fr/");
-  assert.equal(localLink("/content/engie/fr/particuliers-autre", undefined, true), "/content/engie/fr/particuliers-autre");
-  assert.equal(localLink(`${SITE_ROOT}/nouvelle`, "session-test", true), `${SITE_ROOT}/nouvelle?login-token=session-test`);
+  const preview = { name: "ue", value: "1" };
+  assert.equal(localLink(`${SITE_ROOT}/nouvelle?x=1#suite`, preview), `${SITE_ROOT}/nouvelle?x=1&ue=1#suite`);
+  assert.equal(localLink("https://www.engie.fr/", preview), "https://www.engie.fr/");
+  assert.equal(localLink("/content/engie/fr/particuliers-autre", preview), "/content/engie/fr/particuliers-autre");
 });
 
 test("la lecture média reste dans le DAM ENGIE", () => {
