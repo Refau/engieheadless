@@ -55,7 +55,7 @@ function Block({ item, context }: { item: Component; context: Context }) {
         </div>
         <div className="hero-visual">
           {image ? <img src={image} alt={item.imageAlt} {...(author ? { "data-aue-prop": "image", "data-aue-type": "media" } : {})} /> :
-            <div className="energy-art" aria-hidden="true"><span>+</span><span>ma maison<br />demain</span><span>☀</span></div>}
+            <div className="energy-art" aria-hidden="true" />}
         </div>
       </section>;
     case "offer":

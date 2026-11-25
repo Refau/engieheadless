@@ -17,6 +17,8 @@ export default async function Page({ params, searchParams }: {
   const { page, config } = await readPage(path, access);
   const context = { ...config, carry: linkCarry(config, access) };
   const href = (path: string) => localLink(path, context.carry);
+  const navLink = (target: string, label: string) => <a href={href(target)}
+    aria-current={path === target || path.startsWith(`${target}/`) ? "page" : undefined}>{label}</a>;
   return <>
     <a className="skip" href="#contenu">Aller au contenu</a>
     {config.publishedPreview && <p className="editor-notice" role="status">
@@ -26,9 +28,9 @@ export default async function Page({ params, searchParams }: {
     <header className="site-header">
       <a className="brand" href={href(SITE_ROOT)} aria-label="ENGIE — accueil">ENGIE<span>particuliers</span></a>
       <nav aria-label="Navigation principale">
-        <a href={href(`${SITE_ROOT}/offres`)}>Électricité & gaz</a>
-        <a href={href(`${SITE_ROOT}/conseils`)}>Économies d’énergie</a>
-        <a href={href(`${SITE_ROOT}/demenagement`)}>Je déménage</a>
+        {navLink(`${SITE_ROOT}/offres`, "Électricité & gaz")}
+        {navLink(`${SITE_ROOT}/conseils`, "Économies d’énergie")}
+        {navLink(`${SITE_ROOT}/demenagement`, "Je déménage")}
       </nav>
       <a className="contact" href={href(`${SITE_ROOT}/contact`)}>Besoin d’aide ?</a>
     </header>
@@ -40,9 +42,12 @@ export default async function Page({ params, searchParams }: {
       <Composition items={page.components} context={context} />
       {config.author && !page.components.length && <div className="blank"><h1>Votre page blanche</h1><p>Sélectionnez ce conteneur puis + pour ajouter une bannière, une section, une offre ou un conseil.</p></div>}
     </main>
-    <footer><div className="brand">ENGIE</div><p>L’énergie est notre avenir, économisons-la !</p>
-      <p className="disclaimer">Démonstrateur éditorial — offres et parcours illustratifs, sans souscription ni service client connecté.</p>
-      <a href={href(`${SITE_ROOT}/mentions-legales`)}>Mentions légales</a>
+    <footer>
+      <div className="footer-brand"><div className="brand">ENGIE</div><p>L’énergie est notre avenir, économisons-la !</p></div>
+      <div className="footer-legal">
+        <a href={href(`${SITE_ROOT}/mentions-legales`)}>Mentions légales</a>
+        <p className="disclaimer">Démonstrateur éditorial — offres et parcours illustratifs, sans souscription ni service client connecté.</p>
+      </div>
     </footer>
   </>;
 }
